@@ -1,3 +1,17 @@
+20260670 Teresa Maria d'Orey Delgado
+
+Logistic Regression
+
+The Logistic Regression model shows good generalization, with very similar training and test accuracies (0.679 and 0.677), indicating no clear overfitting. Its test performance is moderate, and it performs better for class 0 than class 1, especially in terms of recall. The false positive rate also varies across racial groups, with a higher FPR for African-American than for Caucasian individuals.
+
+Decision Tree
+
+The Decision Tree achieves higher training accuracy (0.829) but lower test accuracy (0.627), with a large gap of 0.202, indicating clear overfitting. It also performs worse than Logistic Regression on class 1, with lower recall and F1-score. However, the FPR difference between the two largest racial groups is slightly smaller.
+
+Overall comparison
+
+Overall, Logistic Regression is the more reliable model because it generalizes better and achieves higher test performance. The Decision Tree fits the training data better but overfits and performs worse on unseen data. These results show the importance of evaluating models using test performance, class-specific metrics, and fairness measures rather than training accuracy alone.
+
 # Dataset -- COMPAS Recidivism (ProPublica)
 
 ## The problem
