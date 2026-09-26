@@ -1,5 +1,42 @@
 20260670 Teresa Maria d'Orey Delgado
 
+
+# WEEK 2 PROGRESS
+
+## After EDA and Data Cleaning
+
+This week focused on improving data quality by handling invalid values and placeholders, standardizing categories, removing duplicates, and dropping redundant features before using the existing preprocessing pipeline.
+
+## Logistic Regression
+
+Logistic Regression still generalizes well, with train accuracy of 0.673 and test accuracy of 0.669. The small gap (+0.004) indicates no clear overfitting. Compared with Week 1, performance remained broadly similar.
+
+## Decision Tree
+
+The Decision Tree reaches 0.795 train accuracy and 0.648 test accuracy, with a gap of +0.147. It still overfits, but less than in Week 1, when the gap was +0.202. Test accuracy also improved from 0.627 to 0.648.
+
+## Overall comparison
+
+Logistic Regression remains the more stable model, while the Decision Tree still overfits. However, the data cleaning appears to have improved the Decision Tree's generalization.
+
+## Summing up
+
+**Logistic Regression**
+
+Week 1: train 0.679 | test 0.677 | gap +0.002  
+Week 2: train 0.673 | test 0.669 | gap +0.004  
+
+→ Essentially unchanged, still generalizing well.
+
+**Decision Tree**
+
+Week 1: train 0.829 | test 0.627 | gap +0.202  
+Week 2: train 0.795 | test 0.648 | gap +0.147  
+
+→ Better test performance and less severe overfitting.
+
+# WEEK 1 PROGRESS
+
 Logistic Regression
 
 The Logistic Regression model shows good generalization, with very similar training and test accuracies (0.679 and 0.677), indicating no clear overfitting. Its test performance is moderate, and it performs better for class 0 than class 1, especially in terms of recall. The false positive rate also varies across racial groups, with a higher FPR for African-American than for Caucasian individuals.
@@ -11,6 +48,9 @@ The Decision Tree achieves higher training accuracy (0.829) but lower test accur
 Overall comparison
 
 Overall, Logistic Regression is the more reliable model because it generalizes better and achieves higher test performance. The Decision Tree fits the training data better but overfits and performs worse on unseen data. These results show the importance of evaluating models using test performance, class-specific metrics, and fairness measures rather than training accuracy alone.
+
+
+
 
 # Dataset -- COMPAS Recidivism (ProPublica)
 

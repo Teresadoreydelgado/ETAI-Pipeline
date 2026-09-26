@@ -1,0 +1,52 @@
+# Notas para relembrar
+ACCURACY
+→ % total de previsões corretas
+
+RECALL
+→ dos positivos reais, quantos encontrei?
+→ importante para perceber quantos casos positivos o modelo deixa escapar
+
+PRECISION
+→ dos positivos que o modelo previu, quantos estavam certos?
+
+F1-SCORE
+→ equilíbrio entre precision e recall
+→ útil quando quero uma visão conjunta das duas
+
+GAP
+→ train accuracy - test accuracy
+→ pequeno = boa generalização
+→ grande = provável overfitting
+
+OVERFITTING
+→ modelo aprende demasiado bem o treino
+→ pior desempenho em dados novos
+
+MCAR
+→ missing sem padrão aparente
+→ imputação simples pode ser suficiente
+
+MNAR / missingness com padrão 
+→ o facto de estar missing contém informação (a preencher informação de doentes nos hospitais sobre seguro, quando não tem significa que os doentes não têm seguro => o missing value tem um meaning)
+→ imputar + criar flag _was_missing
+
+MULTICOLLINEARITY
+→ features demasiado relacionadas/redundantes
+→ pode tornar coeficientes e importância instáveis
+
+EDA
+→ explorar e diagnosticar problemas nos dados
+
+PREPROCESSING
+→ aplicar as correções e preparar os dados para o modelo
+
+SPLIT
+→ separar train e test
+
+FIT
+→ aprender parâmetros a partir dos dados
+→ deve ser feito só no train quando há risco de leakage
+
+DATA LEAKAGE
+→ informação do test/futuro entra sem querer no treino
+→ resultados ficam artificialmente melhores
