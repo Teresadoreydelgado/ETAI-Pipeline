@@ -1,7 +1,56 @@
 20260670 Teresa Maria d'Orey Delgado
 
+# WEEK 4 PROGRESS
 
-# WEEK 2 PROGRESS
+## After Preprocessing
+
+This week introduced imputation, encoding and scaling inside the model pipeline, together with a separate validation set and a locked test set.
+
+## Model comparison
+
+Logistic Regression showed the most stable performance, with validation accuracy of 0.674 and a very small gap (+0.005).
+
+The Decision Tree and Random Forest showed larger train-validation gaps (+0.070 and +0.072, respectivelly), indicating more overfitting. Random Forest performed better on validation than the single Decision Tree.
+
+The Dummy model achieved around 0.55 accuracy, providing a baseline for comparison.
+
+## Pipeline changes
+
+Since Logistic Regression showed the most stable baseline performance, it was used to test an encoder change. Replacing target encoding with one-hot encoding reduced validation accuracy from 0.674 to 0.660 and increased the gap from +0.005 to +0.015, so target encoding was kept.
+
+Random Forest was also tested with `max_depth: 5`. Validation accuracy improved from 0.656 to 0.679, while the gap decreased from +0.072 to +0.011, suggesting less overfitting.
+
+## Summing up
+
+**Logistic Regression**
+
+Week 2: train 0.679 | test 0.677 | gap +0.002  
+Week 3: train 0.673 | test 0.669 | gap +0.004  
+Week 4: train 0.679 | validation 0.674 | gap +0.005  
+
+→ Performance remained very stable, with good generalization.
+
+**Decision Tree**
+
+Week 2: train 0.829 | test 0.627 | gap +0.202  
+Week 3: train 0.795 | test 0.648 | gap +0.147  
+Week 4: train 0.679 | validation 0.609 | gap +0.070  
+
+→ The overfitting gap decreased, although validation performance was lower.
+
+**Dummy Classifier**
+
+Week 4: train 0.549 | validation 0.550 | gap ~0.000  
+
+**Random Forest**
+
+Week 4: train 0.727 | validation 0.656 | gap +0.072
+Week 4 with max_depth=5: train 0.690 | validation 0.679 | gap +0.011  
+
+→ Limiting tree depth reduced overfitting and improved validation performance.  
+
+
+# WEEK 3 PROGRESS
 
 ## After EDA and Data Cleaning
 
@@ -23,19 +72,19 @@ Logistic Regression remains the more stable model, while the Decision Tree still
 
 **Logistic Regression**
 
-Week 1: train 0.679 | test 0.677 | gap +0.002  
-Week 2: train 0.673 | test 0.669 | gap +0.004  
+Week 2: train 0.679 | test 0.677 | gap +0.002  
+Week 3: train 0.673 | test 0.669 | gap +0.004  
 
 → Essentially unchanged, still generalizing well.
 
 **Decision Tree**
 
-Week 1: train 0.829 | test 0.627 | gap +0.202  
-Week 2: train 0.795 | test 0.648 | gap +0.147  
+Week 2: train 0.829 | test 0.627 | gap +0.202  
+Week 3: train 0.795 | test 0.648 | gap +0.147  
 
 → Better test performance and less severe overfitting.
 
-# WEEK 1 PROGRESS
+# WEEK 2 PROGRESS
 
 Logistic Regression
 
