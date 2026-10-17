@@ -36,6 +36,10 @@ This table is updated after each practical class, so you can always see what cha
 | Week | Practical class focus | Added to the pipeline |
 |------|------------------------|------------------------|
 | 2 | Introduction & baseline pipeline | Initial version: project structure, a single naive train/test split (no cross-validation), minimal preprocessing (drop rows with missing values, one-hot encode categoricals), logistic regression baseline, a first (deliberately simple) fairness check comparing our model's and COMPAS's own false-positive rate by race, train-vs-test accuracy reporting (to start spotting overfitting), and each run's full report saved automatically to `results/` |
+| 3 | EDA & data cleaning | `clean_dataset()`: placeholder tokens and invalid values become NaN, category spellings standardized, duplicate rows and redundant columns removed |
+| 4 | Preprocessing inside the pipeline | Imputation, encoding (target encoder) and scaling inside an sklearn `Pipeline`, missingness indicators, a locked test set and a validation split; dummy and random forest models added |
+| 5 | Cross-validation & hyperparameter tuning | Stratified 5-fold CV replaces the single split; Optuna tuning (`src/tuning.py`) with nested CV for an honest estimate; `build_pipeline()` in `src/model.py` |
+| 6 | Ensembles | Oblique random forest and AdaBoost added to `src/model.py`; random forest fixed at 200 trees; search spaces for the three ensembles in `config.yaml` |
 
 ## Environment setup
 

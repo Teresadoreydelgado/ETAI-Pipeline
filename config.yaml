@@ -11,6 +11,13 @@ test_set:
   size: 0.2
   random_state: 42 
 
+cv:
+  n_splits: 5
+  shuffle: true
+  random_state: 42
+  scoring: "accuracy"
+  n_jobs: 1 # -1 = all CPU cores  
+
 output:
   results_dir: "results"   # each run's full report is saved here as a timestamped .txt file
 
@@ -21,7 +28,7 @@ diagnostics:
   # columns that load as text purely because a placeholder token (see placeholder_tokens below)
   # shows up somewhere in them
   numeric_text_columns: ["priors_count", "prior_offenses"]
-  placeholder_tokens: ["-", "?", "n/a", "N/A", "na", "NA", ""]
+  placeholder_tokens: ["-", "?", "n/a", "N/A", "na", "NA", "", "nan"]
   validity_rules:
     age: {min: 18, max: 100}
     decile_score: {min: 1, max: 10}
@@ -64,7 +71,45 @@ preprocessing:
     numeric_strategy: "median"        # applies to age, juv_fel_count, juv_misd_count, juv_other_count, priors_count
     categorical_strategy: "most_frequent"   # applies to sex, age_cat, c_charge_degree
 
+
+
 model:
-  type: "random_forest"  # logistic_regression | random_forest | xgboost
-  params: {'n_estimators': 300, 'max_depth': 5, 'random_state': 42, 'n_jobs': -1}
-  #{max_iter: 1000}
+  type: "random_forest" # dummy | logistic_regression | decision_tree | random_forest | oblique_random_forest | adaboost
+  params:
+    n_estimators: 200
+    random_state: 42
+    n_jobs: -1
+  # Other models' params, to swap in:
+  # decision_tree: {random_state: 42}
+  # logistic_regression: {max_iter: 2000}
+  # oblique_random_forest: {n_estimators: 200, n_components: 10, random_state: 42, n_jobs: -1}
+  # adaboost: {max_depth: 1, n_estimators: 200, learning_rate: 1.0, random_state: 42}
+  # random forest: {'n_estimators': 200, 'random_state': 42, 'n_jobs': -1} 
+
+
+tuning:
+  enabled: true
+  n_trials: 30
+  n_splits: 5                                       # folds that score each candidate
+  random_state: 42                                  # seeds the sampler and those folds
+  # Keys are Pipeline parameter names. Types: int / float (low, high, log) or categorical (choices).
+  # Ensembles take minutes per run: use a small n_trials while testing.
+  search_spaces:
+    decision_tree:
+      model__max_depth: {type: int, low: 1, high: 20}
+      model__min_samples_leaf: {type: int, low: 1, high: 200, log: true}
+      model__criterion: {type: categorical, choices: ["gini", "entropy"]}
+    logistic_regression:
+      model__C: {type: float, low: 0.0001, high: 100, log: true}
+    random_forest:
+      model__max_depth: {type: int, low: 2, high: 30}
+      model__min_samples_leaf: {type: int, low: 1, high: 200, log: true}
+      model__max_features: {type: categorical, choices: ["sqrt", 0.5, 1.0]}
+    oblique_random_forest:
+      model__estimator__tree__max_depth: {type: int, low: 2, high: 30}
+      model__estimator__tree__min_samples_leaf: {type: int, low: 1, high: 200, log: true}
+      model__estimator__project__n_components: {type: int, low: 3, high: 10}   # <= number of features
+    adaboost:
+      model__estimator__max_depth: {type: int, low: 1, high: 8}
+      model__n_estimators: {type: int, low: 25, high: 400, log: true}
+      model__learning_rate: {type: float, low: 0.01, high: 1.0, log: true}
