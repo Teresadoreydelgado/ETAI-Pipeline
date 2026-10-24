@@ -2,10 +2,11 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, BaggingClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, BaggingClassifier, GradientBoostingClassifier, HistGradientBoostingClassifier
 from sklearn.pipeline import Pipeline
 from src.preprocessing import build_preprocessor
 from sklearn.random_projection import SparseRandomProjection
+from sklearn.naive_bayes import GaussianNB
 
 def oblique_random_forest(n_estimators: int = 100, n_components: int = 10, density="auto",
                           random_state=None, n_jobs=None, **tree_params):
@@ -39,7 +40,10 @@ _MODELS = {
     # random subset of features at every split; predictions are averaged. Untuned for now.
     "random_forest": RandomForestClassifier,
     "oblique_random_forest": oblique_random_forest,
-    "adaboost": adaboost
+    "adaboost": adaboost,
+    "gradient_boosting": GradientBoostingClassifier,
+    "hist_gradient_boosting": HistGradientBoostingClassifier,
+    "naive_bayes": GaussianNB,
     }
 
 

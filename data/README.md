@@ -1,5 +1,62 @@
 20260670 Teresa Maria d'Orey Delgado
 
+# WEEK 7 PROGRESS
+
+## Boosting and Evaluation Metrics
+
+This week, three new models were added to the pipeline: Gradient Boosting, HistGradientBoosting and Gaussian Naive Bayes. The evaluation was extended from accuracy alone to eight metrics: accuracy, balanced accuracy, precision, recall, F1, F-beta (beta=2), ROC-AUC and average precision.
+
+The pipeline now uses out-of-fold predicted probabilities to calculate these metrics and generate classification and fairness reports. ROC-AUC was selected as the optimization metric for Optuna and for ranking models in the new scoreboard (`results/runs.csv`).
+
+All nine models were evaluated using stratified 5-fold cross-validation, with nested cross-validation for tuned models (30 Optuna trials). The 20% test set remains locked and was not used for evaluation or model selection.
+
+### Pipeline progress
+
+| Week | Pipeline improvements |
+|---|---|
+| W7 | Gradient Boosting, HistGradientBoosting and Naive Bayes; 8 evaluation metrics; ROC-AUC selection; out-of-fold probabilities; persistent scoreboard |
+
+### Scoreboard
+
+Selection metric: **ROC-AUC**. Results are reported as mean ± standard deviation across 5 folds, using nested CV for tuned models. The no-model floor is 0.500 for all models.
+
+| Model | Untuned ROC-AUC | Tuned ROC-AUC (mean ± std) | Floor | Chosen hyperparameters |
+|---|---|---|---|---|
+| Gradient Boosting | 0.727 | 0.728 ± 0.014 | 0.500 | n_estimators=307, learning_rate=0.0292, max_depth=2, min_samples_leaf=1, subsample=0.7346 |
+| HistGradientBoosting | 0.717 | 0.728 ± 0.015 | 0.500 | max_iter=82, learning_rate=0.1109, max_leaf_nodes=4, min_samples_leaf=130, l2_regularization=0.000700 |
+| Oblique Random Forest | 0.686 | 0.727 ± 0.015 | 0.500 | tree max_depth=13, min_samples_leaf=91, n_components=8 |
+| AdaBoost | 0.723 | 0.727 ± 0.014 | 0.500 | base tree max_depth=4, n_estimators=55, learning_rate=0.1674 |
+| Random Forest | 0.683 | 0.726 ± 0.013 | 0.500 | max_depth=9, min_samples_leaf=42, max_features=0.5 |
+| Logistic Regression | 0.719 | Not tuned | 0.500 | max_iter=2000, class_weight=balanced |
+| Decision Tree | 0.605 | 0.718 ± 0.015 | 0.500 | max_depth=9, min_samples_leaf=100, criterion=gini |
+| Naive Bayes | 0.685 | 0.705 ± 0.012 | 0.500 | var_smoothing=0.09115 |
+| Dummy | 0.500 | Not tuned | 0.500 | Default parameters |
+
+### Selection metric
+
+ROC-AUC was chosen because the COMPAS task involves ranking individuals by predicted risk of recidivism, rather than only making binary classifications. Unlike accuracy, ROC-AUC evaluates how well the model distinguishes between the two classes across different classification thresholds, without depending on a fixed threshold of 0.5. It is therefore more appropriate for comparing the models' ability to rank individuals by risk.
+
+### Model comparison
+
+The best results were achieved by Gradient Boosting and HistGradientBoosting, both with a ROC-AUC of 0.728. Oblique Random Forest, AdaBoost and Random Forest followed closely, with scores between 0.726 and 0.727.
+
+Hyperparameter tuning substantially improved the Decision Tree (0.605 to 0.718), Random Forest (0.683 to 0.726) and Oblique Random Forest (0.686 to 0.727). In contrast, Gradient Boosting performed almost equally well with its default configuration (0.727 vs 0.728).
+
+The differences between the five best models are very small relative to their standard deviations, so the results do not establish a clear winner.
+
+### Conclusions
+
+- **ROC-AUC provides a more appropriate evaluation for this task.** It measures the quality of risk ranking independently of the classification threshold, while the remaining metrics provide complementary information about classification performance.
+- **Tuning improves some models more than others.** The largest improvements occurred in the Decision Tree and the two random forests, while Gradient Boosting already performed well before tuning.
+- **The strongest models perform similarly.** The five best models achieved ROC-AUC values between 0.726 and 0.728, suggesting that additional model complexity does not necessarily produce a meaningful improvement.
+- **The no-model floor confirms that the models learn useful patterns.** All eight non-dummy models exceeded the Dummy ROC-AUC of 0.500.
+- **The test set remains untouched.** All comparisons use cross-validation on the development set, preserving the locked test set for future evaluation.
+
+**Final reported result:** Gradient Boosting achieved a nested CV ROC-AUC of 0.728 ± 0.014, tied with HistGradientBoosting at the reported precision. The nested CV score is reported instead of the best Optuna trial score, as it provides a more reliable estimate of generalization performance.
+
+**Note:** Week 7 ROC-AUC results are not directly comparable with the accuracy scores reported in Weeks 5 and 6, because they measure different aspects of predictive performance.
+
+
 # WEEK 6 PROGRESS
 
 ## Ensembles: Random Forest, Oblique Random Forest and AdaBoost
