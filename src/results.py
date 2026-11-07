@@ -12,6 +12,13 @@ def save_run(results_dir: str, run: str, config: dict, report_text: str) -> str:
     path = os.path.join(results_dir, f"run_{run}.txt")
     cv = config["cv"]
     tuning = config.get("tuning", {})
+    selection = config.get("feature_selection") or {}
+    if not selection.get("enabled"):
+        selection_line = "off"
+    elif tuning.get("enabled") and selection.get("search_space"):
+        selection_line = "vote, min_votes tuned with the model (see select__min_votes below)"
+    else:
+        selection_line = f"vote, min_votes={selection.get('min_votes', 2)}"
     tuning_line = (f"Optuna, {tuning['n_trials']} trials x {tuning['n_splits']} folds, nested CV "
                    f"random_state={tuning['random_state']}" if tuning.get("enabled") else "off")
     header = (
@@ -23,6 +30,7 @@ def save_run(results_dir: str, run: str, config: dict, report_text: str) -> str:
         f"random_state={cv.get('random_state')}\n"
         f"Metrics: {', '.join(cv['metrics'])}\n"
         f"Selection metric: {cv['selection_metric']}\n"
+        f"Feature selection: {selection_line}\n"
         f"Tuning: {tuning_line}\n"
         f"Locked test set: size={config['test_set']['size']} "
         f"random_state={config['test_set']['random_state']} (not evaluated)\n"

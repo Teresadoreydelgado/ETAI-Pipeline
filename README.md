@@ -15,18 +15,20 @@ go on.
 ```
 .
 ├── main.py                # entry point: run the whole pipeline
-├── config.yaml             # all tunable settings live here
+├── config.yaml            # all tunable settings live here
+├── compare_runs.py        # corrected paired t-test between two runs of the scoreboard
 ├── requirements.txt
 ├── src/
-│   ├── data.py             # loading
-│   ├── preprocessing.py    # cleaning + train/test split
-│   ├── model.py             # model construction
-│   ├── evaluate.py         # accuracy metrics + fairness check
-│   └── results.py          # saves each run's report to disk
-├── results/                # created automatically -- one file per run (not tracked in git)
+│   ├── data.py            # loading
+│   ├── preprocessing.py   # cleaning, preprocessing + development/test split
+│   ├── model.py           # models, feature selection (VoteSelector) and build_pipeline()
+│   ├── tuning.py          # Optuna tuning + nested cross-validation
+│   ├── evaluate.py        # metrics, cross-validation, fairness check, corrected t-test
+│   └── results.py         # saves each run's report and the scoreboard (runs.csv)
+├── results/               # created automatically -- one report per run + runs.csv
 └── data/
     ├── compas_two_year_recidivism.csv
-    └── README.md            # problem description + full data dictionary
+    └── README.md          # problem description + full data dictionary
 ```
 
 ## Pipeline progress
@@ -40,6 +42,8 @@ This table is updated after each practical class, so you can always see what cha
 | 4 | Preprocessing inside the pipeline | Imputation, encoding (target encoder) and scaling inside an sklearn `Pipeline`, missingness indicators, a locked test set and a validation split; dummy and random forest models added |
 | 5 | Cross-validation & hyperparameter tuning | Stratified 5-fold CV replaces the single split; Optuna tuning (`src/tuning.py`) with nested CV for an honest estimate; `build_pipeline()` in `src/model.py` |
 | 6 | Ensembles | Oblique random forest and AdaBoost added to `src/model.py`; random forest fixed at 200 trees; search spaces for the three ensembles in `config.yaml` |
+| 7 | Boosting & evaluation metrics | Gradient boosting, HistGradientBoosting and naive Bayes added; 8 evaluation metrics computed from out-of-fold probabilities, with ROC-AUC as the selection metric; persistent scoreboard of all runs (`results/runs.csv`); corrected paired t-test (`corrected_paired_test()` in `src/evaluate.py`) |
+| 8 | XGBoost & feature selection | XGBoost added to `src/model.py`; feature selection (`VoteSelector`) as a learned step inside the pipeline, between preprocessing and the model, with `min_votes` tuned together with the model; cache folder (`memory=`) so tuning doesn't refit preprocessing and selection in every trial; `compare_runs.py` compares two runs with the corrected t-test |
 
 ## Environment setup
 
@@ -99,11 +103,12 @@ folder, on any OS:
 python main.py
 ```
 
-This loads `config.yaml`, loads and preprocesses the data, trains the model, and prints:
-- **train accuracy and test accuracy, side by side.** Comparing the two is how you catch overfitting: if the model looks much better on the data it was trained on than on data it's never seen, it has memorised rather than learned something that generalises. 
-- a classification report on the test set
-- a false-positive-rate-by-race comparison between our model and
-  COMPAS's own score
+This loads `config.yaml`, loads and cleans the data, locks the test set, and evaluates the pipeline (preprocessing, optional feature selection and model) with stratified 5-fold cross-validation on the development set. It prints:
+- **the selection metric (ROC-AUC) with its train-validation gap and the no-model floor.** A large gap means the model memorised the training folds instead of learning something that generalises; the floor (a dummy model) shows what "no learning" scores.
+- if tuning is enabled: the honest nested CV score of the tuned model and the chosen hyperparameters
+- all 8 metrics (mean ± std across folds)
+- the scoreboard of all runs (`results/runs.csv`), best first
+- the features the final model keeps
 
 All of this is also saved to a timestamped file in `results/` (e.g.`results/run_20260916_143012.txt`), so it doesn't just scroll past in your terminal -- open it later, or change something in `config.yaml` (like the model type) and compare the new file to the last one.
 `results/` is created automatically the first time you run the

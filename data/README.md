@@ -1,5 +1,67 @@
 20260670 Teresa Maria d'Orey Delgado
 
+# WEEK 8 PROGRESS
+
+## XGBoost and Feature Selection
+
+This week, two changes were made to the pipeline. First, **XGBoost** was added as a new model: it is gradient boosting with regularisation inside each split (`gamma`, `min_child_weight`, `reg_lambda`, `reg_alpha`). Second, a **feature selection** step (`VoteSelector`) was added inside the pipeline, between preprocessing and the model. Three models vote on each feature: a random forest and gradient boosting vote for features with above-average importance, and an L1-penalised logistic regression votes for features whose coefficient is not shrunk to zero. A feature is kept if it gets at least `min_votes` votes.
+
+Because the selection looks at the labels, it is fitted only on the training rows of each fold, like every other learned step; selecting features on all rows before cross-validation would leak information and give an optimistic score. `min_votes` is tuned together with the model (`select__min_votes`). A cache folder (`memory=`) stores the fitted preprocessing and selection steps, so they are not refitted in every tuning trial; this changes the running time, not the results.
+
+XGBoost was tuned with and without feature selection (30 Optuna trials, nested CV, same folds as Week 7), and the two runs were compared with the corrected paired t-test. The test set remains locked.
+
+### Pipeline progress
+
+| Week | Pipeline improvements |
+|---|---|
+| W7 | Gradient Boosting, HistGradientBoosting and Naive Bayes; 8 evaluation metrics; ROC-AUC selection; out-of-fold probabilities; persistent scoreboard |
+| W8 | XGBoost; feature selection (`VoteSelector`) inside the pipeline, with `min_votes` tuned together with the model; cache folder; `compare_runs.py` (corrected paired t-test between two runs) |
+
+### Scoreboard
+
+Selection metric: **ROC-AUC**. Results are reported as mean ± standard deviation across 5 folds, using nested CV for tuned models. The no-model floor is 0.500 for all models.
+
+| Model | Untuned ROC-AUC | Tuned ROC-AUC (mean ± std) | Floor | Chosen hyperparameters |
+|---|---|---|---|---|
+| Gradient Boosting | 0.727 | 0.728 ± 0.014 | 0.500 | n_estimators=307, learning_rate=0.0292, max_depth=2, min_samples_leaf=1, subsample=0.7346 |
+| HistGradientBoosting | 0.717 | 0.728 ± 0.015 | 0.500 | max_iter=82, learning_rate=0.1109, max_leaf_nodes=4, min_samples_leaf=130, l2_regularization=0.000700 |
+| **XGBoost** | 0.706 | 0.727 ± 0.016 | 0.500 | n_estimators=451, learning_rate=0.0165, max_depth=7, min_child_weight=3.58, subsample=0.552, gamma=2.49 |
+| Oblique Random Forest | 0.686 | 0.727 ± 0.015 | 0.500 | tree max_depth=13, min_samples_leaf=91, n_components=8 |
+| AdaBoost | 0.723 | 0.727 ± 0.014 | 0.500 | base tree max_depth=4, n_estimators=55, learning_rate=0.1674 |
+| Random Forest | 0.683 | 0.726 ± 0.013 | 0.500 | max_depth=9, min_samples_leaf=42, max_features=0.5 |
+| **XGBoost + feature selection** | 0.706 | 0.725 ± 0.013 | 0.500 | min_votes=3, n_estimators=273, learning_rate=0.0366, max_depth=7, min_child_weight=1.31, subsample=0.637, gamma=2.79 |
+| Logistic Regression | 0.719 | Not tuned | 0.500 | max_iter=2000, class_weight=balanced |
+| Decision Tree | 0.605 | 0.718 ± 0.015 | 0.500 | max_depth=9, min_samples_leaf=100, criterion=gini |
+| Naive Bayes | 0.685 | 0.705 ± 0.012 | 0.500 | var_smoothing=0.09115 |
+| Dummy | 0.500 | Not tuned | 0.500 | Default parameters |
+
+### Feature selection (XGBoost, tuned, ROC-AUC, nested CV)
+
+| Run | Untuned | Tuned (nested) mean ± std | Train-validation gap (tuned) | Features kept |
+|---|---|---|---|---|
+| Without selection | 0.706 | 0.727 ± 0.016 | +0.013 | all 10 |
+| With selection (VoteSelector, min_votes=3) | 0.706 | 0.725 ± 0.013 | +0.006 | 2: age, priors_count |
+
+Corrected paired t-test (with − without): mean difference −0.0025, wins 1/5 folds, t = −0.95, p = 0.396.
+
+The smaller model is as good as the full one: with only 2 of the 10 features, the tuned XGBoost loses 0.0025 of ROC-AUC, wins in 1 of 5 folds, and the corrected t-test gives p = 0.40, so there is no real difference. The selection kept only age and the number of prior offences, and the choice of `min_votes` hardly matters: on COMPAS, no other feature gets votes, so 1, 2 or 3 votes keep the same two features. I would keep the selection on, because a smaller model that scores the same is the better model: it is simpler, faster, easier to explain, and it overfits less (gap +0.006 vs +0.013, with a smaller std across folds).
+
+### Model comparison
+
+Untuned, XGBoost was one of the weaker models (0.706) and overfitted the most among the boosting models (gap +0.083), because its defaults are aggressive (depth 6, learning rate 0.3). After tuning, it reached 0.727 ± 0.016, tied with the best Week 7 models (Gradient Boosting and HistGradientBoosting, 0.728). Tuning chose a small learning rate and a high `gamma` (about 2.5), which blocks splits that barely improve the fit, and the gap dropped to +0.013.
+
+With feature selection, XGBoost scored 0.725 ± 0.013 using only 2 features, within the noise of every top model.
+
+### Conclusions
+
+- **XGBoost needs tuning.** Its aggressive defaults overfit (gap +0.083); tuning brought the score from 0.706 to 0.727 and the gap down to +0.013, mainly by choosing a low learning rate and strong split regularisation (`gamma`).
+- **The strongest models still perform similarly.** Tuned XGBoost (0.727) ties with Gradient Boosting and HistGradientBoosting (0.728). As in previous weeks, more model complexity does not produce a meaningful gain.
+- **Two features carry almost all the information.** Age and number of prior offences give the same ROC-AUC as all 10 features (p = 0.40), which explains why every model reaches a similar ceiling: the limit is the information in the data, not the model.
+- **Feature selection must be inside the cross-validation.** It learns from the labels, so it is refitted on the training rows of each fold; otherwise it would leak information and give an optimistic score.
+- **Fairness did not change.** In both runs, the false positive rate is still about twice as high for African-American (0.30) as for Caucasian (0.16) defendants: lower than COMPAS's own score (0.45 vs 0.23), but neither XGBoost nor feature selection reduced the disparity.
+
+**Final reported result:** XGBoost with feature selection achieved a nested CV ROC-AUC of 0.725 ± 0.013 using 2 features, not significantly different from the 10-feature model (0.727 ± 0.016, p = 0.40). The nested CV score is reported instead of the best Optuna trial score, as it provides a more reliable estimate of generalization performance.
+
 # WEEK 7 PROGRESS
 
 ## Boosting and Evaluation Metrics

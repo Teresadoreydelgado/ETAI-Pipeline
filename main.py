@@ -15,6 +15,8 @@ from datetime import datetime
 import optuna
 import yaml
 from sklearn.model_selection import StratifiedKFold
+import shutil
+import tempfile
 
 from src.data import load_data
 from src.preprocessing import clean_dataset, drop_duplicate_rows, split_features_target, split_dev_test
@@ -62,7 +64,10 @@ def main():
         f"{cv_config['n_splits']}-fold CV")
     print(f"Data: {len(X_dev)} development rows    |   {len(X_test)} test rows locked away (not used)")
 
-    pipeline = build_pipeline(config["preprocessing"], config["model"])
+    selection_config = config.get("feature_selection") or {}
+    selection_enabled = selection_config.get("enabled", False)
+    cache_dir = tempfile.mkdtemp(prefix="pipeline_cache_")
+    pipeline = build_pipeline(config["preprocessing"], config["model"], selection_config, memory=cache_dir)
     floor_pipeline = build_pipeline(config["preprocessing"], {"type": "dummy"})
     floor_scores, _ = cross_validate_pipeline(floor_pipeline, X_dev, y_dev, cv,
                                             {selection_metric: scorers[selection_metric]}, selection_metric, n_jobs)
@@ -84,7 +89,9 @@ def main():
         if model_type not in search_spaces:
             raise ValueError(f"tuning is enabled but config.yaml has no tuning.search_spaces for "
                             f"'{model_type}'. Add one, or set tuning.enabled: false.")
-        search_space = search_spaces[model_type]
+        search_space = dict(search_spaces[model_type])
+        if selection_enabled: # Week 8: tune how much to select together with the model
+            search_space.update(selection_config.get("search_space") or {})
         n_trials = tuning_config["n_trials"]
         tuning_seed = tuning_config["random_state"]
         optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -120,8 +127,18 @@ def main():
     pipeline.fit(X_dev, y_dev)
     refit = f"Final model: {model_type} refit on all {len(X_dev)} development rows."
     report += "\n" + refit + "\n"
+    feature_names = pipeline.named_steps["prep"].get_feature_names_out()
+    if selection_enabled:
+        kept = feature_names[pipeline.named_steps["select"].get_support()]
+        selection_label = f"vote, min_votes={pipeline.named_steps['select'].min_votes}"
+    else:
+        kept = feature_names
+        selection_label = "off"
+    features_line = f"Features kept ({len(kept)} of {len(feature_names)}): {', '.join(kept)}"
+    report += features_line + "\n"
 
     row = {"run": run, "data": config["data"]["path"], "model": model_type, "tuned": tuning_enabled,
+        "feature_selection": selection_label,
         "encoder": config["preprocessing"]["encoder"], "scaler": config["preprocessing"]["scaler"],
         "params": str(config["model"].get("params")), "tuned_params": str(study.best_params) if tuning_enabled else "",
         "metric": selection_metric, "mean": final_scores["validation"].mean(),
@@ -130,7 +147,7 @@ def main():
     runs = save_scores(config.get("output", {}).get("scoreboard", "results/runs.csv"), row)
     same = runs[(runs["data"] == row["data"]) & (runs["metric"] == selection_metric)]
     board = (same.sort_values("mean", ascending=False)
-            [["run", "model", "tuned", "encoder", "scaler", "mean", "std", "untuned", "floor"]]
+            [["run", "model", "tuned", "feature_selection", "encoder", "scaler", "mean", "std", "untuned", "floor"]]
             .rename(columns={"mean": selection_metric})
             .to_string(index=False, float_format=lambda v: f"{v:.3f}"))
     print(f"\nScoreboard (runs on the same data and metric; best first)\n{board}")
@@ -138,6 +155,9 @@ def main():
 
     path = save_run(config.get("output", {}).get("results_dir", "results"), run, config, report)
     print(f"\n{refit}\nFull report (per-fold tables, tuning, confusion matrix, fairness): {path}")
+    print(features_line)
+
+    shutil.rmtree(cache_dir, ignore_errors=True) # Week 8: delete this run's cache folder
 
 
 if __name__ == "__main__":
