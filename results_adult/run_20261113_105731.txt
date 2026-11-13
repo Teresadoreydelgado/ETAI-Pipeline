@@ -1,0 +1,65 @@
+Run: 20261113_105731
+Model: decision_tree params={'random_state': 42}
+Preprocessing: encoder=target scaler=robust
+CV: 5 stratified folds shuffle=True random_state=42
+Metrics: accuracy, balanced_accuracy, precision, recall, f1, fbeta_2, roc_auc, average_precision
+Selection metric: roc_auc
+Feature selection: off
+Tuning: off
+Locked test set: size=0.2 random_state=42 (not evaluated)
+============================================================
+
+Hyperparameters from config.yaml: {'random_state': 42}
+
+Cross-validation (5 stratified folds, selection metric: roc_auc)
+
+ fold  train  validation   gap  accuracy  balanced_accuracy  precision  recall    f1  fbeta_2  roc_auc  average_precision
+    1  0.931       0.706 0.225     0.790              0.706      0.561   0.546 0.553    0.549    0.706              0.414
+    2  0.938       0.730 0.207     0.792              0.730      0.560   0.613 0.585    0.602    0.730              0.436
+    3  0.926       0.734 0.191     0.814              0.734      0.618   0.583 0.600    0.589    0.734              0.460
+    4  0.934       0.732 0.202     0.805              0.732      0.594   0.591 0.593    0.592    0.732              0.449
+    5  0.928       0.718 0.210     0.795              0.718      0.572   0.570 0.571    0.570    0.718              0.429
+
+                   mean   std
+accuracy          0.799 0.010
+balanced_accuracy 0.724 0.012
+precision         0.581 0.025
+recall            0.580 0.025
+f1                0.580 0.019
+fbeta_2           0.580 0.021
+roc_auc           0.724 0.012
+average_precision 0.438 0.018
+
+roc_auc: train-validation gap mean = +0.207
+
+No-model floor (dummy, same folds): roc_auc = 0.500
+
+Out-of-fold predictions, development set (threshold 0.5):
+
+        predicted 0  predicted 1
+true 0         3168          483
+true 1          482          667
+
+              precision    recall  f1-score   support
+
+           0       0.87      0.87      0.87      3651
+           1       0.58      0.58      0.58      1149
+
+    accuracy                           0.80      4800
+   macro avg       0.72      0.72      0.72      4800
+weighted avg       0.80      0.80      0.80      4800
+
+
+False positive rate by sex (development set, out-of-fold)
+(share of people in the negative class (0) who were predicted as positive (1))
+ Our model:
+ Female               FPR = 0.06 (n=1390)
+ Male                 FPR = 0.17 (n=2261)
+
+Final model: decision_tree refit on all 4800 development rows.
+Features kept (36 of 36): numeric__age, numeric__education_num, numeric__capital_gain, numeric__capital_loss, numeric__hours_per_week, numeric__v01, numeric__v02, numeric__v03, numeric__v04, numeric__v05, numeric__v06, numeric__v07, numeric__v08, numeric__v09, numeric__v10, numeric__v11, numeric__v12, numeric__v13, numeric__v14, numeric__v15, numeric__v16, numeric__v17, numeric__v18, categorical__workclass, categorical__marital_status, categorical__occupation, categorical__relationship, categorical__native_country, categorical__v19, categorical__v20, categorical__v21, categorical__v22, categorical__v23, categorical__v24, categorical__v25, indicators__workclass_was_missing
+
+Scoreboard:
+            run         model  tuned feature_selection encoder scaler  roc_auc   std  untuned  floor
+20261113_105731 decision_tree  False               off  target robust    0.724 0.012    0.724  0.500
+20261113_105518         dummy  False               off  target robust    0.500 0.000    0.500  0.500

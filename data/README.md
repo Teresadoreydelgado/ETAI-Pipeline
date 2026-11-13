@@ -1,5 +1,69 @@
 20260670 Teresa Maria d'Orey Delgado
 
+# WEEK 9 PROGRESS
+
+## Beyond COMPAS (option A: Adult income)
+
+This week no new technique was added: the goal was to check whether the pipeline works on a second dataset. Option A uses the **Adult** dataset (predict whether a person earns more than 50K USD a year), which is still a yes/no question. Every part that broke showed a place in the code that only worked for COMPAS. Each fix had to be general: nothing specific to Adult is written in the code, everything dataset-specific lives in its own config file, and the COMPAS run still gives exactly the same numbers as in Week 8 (an untuned XGBoost run with selection gives 0.706 ± 0.015, as before, and `compare_runs.py` reproduces the Week 8 test: −0.0025, 1/5, p = 0.396).
+
+### How to run
+
+```bash
+python main.py config_adult.yaml     # Adult (results in results_adult/)
+python main.py                       # COMPAS, exactly as before (config.yaml by default)
+python compare_runs.py results_adult/runs.csv   # corrected t-test on the Adult scoreboard
+```
+
+The predictions for the 2,000 new people are saved to `predictions/adult_new_predictions.csv` (`id`, probability, 0/1 prediction at threshold 0.5), made by the final model of the best run.
+
+**Sensitive attribute:** `sex` is audited in the fairness report and is not a feature. `race` is also kept out of the features (in `drop_columns`): an income model should not decide based on someone's race, so neither sensitive attribute is used directly. They can still enter indirectly, for example through `relationship` (Husband/Wife) or `marital_status`. `fnlwgt` is dropped because it is a census sampling weight, not a characteristic of the person.
+
+### Pipeline progress
+
+| Week | Pipeline improvements |
+|---|---|
+| W8 | XGBoost; feature selection (`VoteSelector`) inside the pipeline, with `min_votes` tuned together with the model; cache folder; `compare_runs.py` (corrected paired t-test between two runs) |
+| W9 | Pipeline runs on a second dataset (Adult) with its own config: config file as an argument of `main.py`; general fairness report (reference score in the config); placeholders cleaned in every text column; predictions for new, label-free data (`src/predict.py`); `compare_runs.py` reads any scoreboard |
+
+### What broke, why, and how I fixed it
+
+| What broke | Why | Fix |
+|---|---|---|
+| `KeyError: 'score_text'` in the fairness report | COMPAS's own score was written in the code (`fairness_report`, `split_features_target`) | `reference_score` moved to `config.yaml`; the report shows it only if the config names one (Adult has none) |
+| `?` stayed as a category (no error!) | placeholders were only replaced in the columns listed in `canonical_categories`, which was enough for COMPAS | `clean_dataset()` now turns placeholders into NaN in every text column; the check after cleaning gives 379 / 381 / 86 missing (workclass / occupation / native_country) and no `?` category |
+| `main.py` always read `config.yaml` | the config path was fixed | `python main.py <config>`, default `config.yaml` |
+| no way to predict new data | the pipeline only evaluated | new `src/predict.py` + `predict` section in the config: same cleaning (without `drop_duplicate_rows`), rows out = rows in (2,000) |
+| `compare_runs.py` only read the COMPAS scoreboard | the path was fixed | the scoreboard path is an optional first argument |
+
+### Results (Adult)
+
+5-fold CV on the development set (4,800 rows, 24% earn > 50K); nested CV for tuned runs. Test set locked.
+
+| Run | ROC-AUC (mean ± std) | Accuracy | F1 | Train-validation gap | Features kept |
+|---|---|---|---|---|---|
+| Dummy (floor) | 0.500 ± 0.000 | 0.761 | 0.000 | +0.000 | - |
+| Decision tree (default) | 0.724 ± 0.012 | 0.799 | 0.580 | +0.207 | all 36 |
+| XGBoost (default) | 0.895 ± 0.015 | 0.847 | 0.645 | +0.105 | all 36 |
+| XGBoost tuned, no selection | 0.907 ± 0.016 | **0.858** | **0.662** | +0.023 | all 36 |
+| **XGBoost tuned + selection** | **0.908 ± 0.014** | **0.857** | **0.673** | +0.013 | 8: age, education_num, capital_gain, capital_loss, hours_per_week, marital_status, occupation, relationship |
+| Target | ≥ 0.90 | ≥ 0.855 | ≥ 0.66 | | |
+
+Chosen hyperparameters: without selection n_estimators=180, learning_rate=0.033, max_depth=4; with selection min_votes=1, n_estimators=522, learning_rate=0.115, max_depth=1.
+
+Corrected paired t-test (with − without selection, ROC-AUC): mean difference +0.0015, wins 4/5 folds, t = 1.20, p = 0.296.
+
+The hardest assumption to find was the placeholder cleaning, because it failed silently: the `?` in `workclass`, `occupation` and `native_country` stayed as a category, the pipeline ran without any error, and only the check after cleaning showed it. The `score_text` error was easy to find, because the program stopped and named the column. What reached the target scores was tuning, not a different model: the default XGBoost overfitted (gap +0.105) and missed all three targets, while the tuned one chose shallower trees and a lower learning rate, reduced the gap to +0.023 and reached all three. Feature selection was not needed for the targets, since the model without it already reached them, and it did not change the ROC-AUC in a real way (p = 0.30), but it reached the same score with 8 of 36 features and discarded all 25 undocumented columns (v01–v25) as noise.
+
+### Conclusions
+
+- **The pipeline is now general.** The same code runs both datasets, each with its own config, and COMPAS gives exactly the same numbers as before.
+- **Accuracy alone is misleading here.** Always predicting "≤ 50K" already gives 0.761, because only 24% of people earn more; that is why the targets also include ROC-AUC and F1.
+- **Tuning fixed overfitting.** XGBoost went from a gap of +0.105 to +0.023 and from 0.895 to 0.907 ROC-AUC. Compared with the defaults (depth 6, learning rate 0.3), tuning chose shallower trees (depth 4, and depth 1 with selection) and a lower learning rate.
+- **Feature selection behaves as in COMPAS.** In both datasets it does not change the ROC-AUC in a real way (p = 0.40 for COMPAS, p = 0.30 for Adult), but it gives a much smaller model (2 of 10 and 8 of 36 features).
+- **Fairness:** in every run that predicts anyone as > 50K, the false positive rate is higher for men than for women (final model 0.09 vs 0.03): men who earn ≤ 50K are wrongly predicted as > 50K about three times as often. Tuning without selection gave the lowest rates (0.08 vs 0.01); feature selection raised recall and with it the FPR of both groups slightly, but no run removed the difference between them.
+
+**Final reported result:** XGBoost tuned with feature selection reached a nested CV ROC-AUC of 0.908 ± 0.014, accuracy 0.857 and F1 0.673, meeting all three targets with 8 of 36 features. It is not significantly different from the model with all 36 features (0.907 ± 0.016, p = 0.30), which also meets the targets. The nested CV score is reported instead of the best Optuna trial score, as it provides a more reliable estimate of generalization performance.
+
 # WEEK 8 PROGRESS
 
 ## XGBoost and Feature Selection

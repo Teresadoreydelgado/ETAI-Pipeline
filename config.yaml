@@ -6,6 +6,7 @@ data:
   target: "two_year_recid"
   sensitive_attr: "race"          # excluded from model features, used only to audit fairness
   drop_columns: ["id", "decile_score", "score_text"]  # identifiers / COMPAS's own score, not our model's inputs
+  reference_score: {column: "score_text", negative_value: "Low", name: "COMPAS's own score"}
 
 test_set:
   size: 0.2
@@ -100,7 +101,7 @@ model:
 
 
 tuning:
-  enabled: true
+  enabled: false
   n_trials: 30
   n_splits: 5                                       # folds that score each candidate
   random_state: 42                                  # seeds the sampler and those folds

@@ -7,7 +7,7 @@ Run with:
 This orchestrates the full pipeline:
     load config -> load data -> clean -> split development/test (test set locked)
     -> stratified k-fold CV on the development set -> (optional) hyperparameter tuning
-    -> reports -> refit final model -> save results
+    -> reports -> refit final model -> save results -> predict new data (if configured)
 """
 
 from datetime import datetime
@@ -16,6 +16,7 @@ import optuna
 import yaml
 from sklearn.model_selection import StratifiedKFold
 import shutil
+import sys
 import tempfile
 
 from src.data import load_data
@@ -25,6 +26,7 @@ from src.evaluate import (build_scorers, cross_validate_pipeline, cv_report, oof
                           fairness_report)
 from src.tuning import tune_pipeline, nested_cross_validate, tuning_report
 from src.results import save_run, save_scores
+from src.predict import predict_new_data
 
 
 def load_config(path: str = "config.yaml") -> dict:
@@ -32,8 +34,8 @@ def load_config(path: str = "config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-def main():
-    config = load_config()
+def main(config_path: str = "config.yaml"):
+    config = load_config(config_path)
     run = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_type = config["model"]["type"]
 
@@ -60,6 +62,7 @@ def main():
     scorers = build_scorers(metrics)
     n_jobs = cv_config.get("n_jobs", 1)
 
+    print(f"Config: {config_path}")
     print(f"Model: {model_type}   |   selection metric: {selection_metric}   |   "
         f"{cv_config['n_splits']}-fold CV")
     print(f"Data: {len(X_dev)} development rows    |   {len(X_test)} test rows locked away (not used)")
@@ -122,8 +125,8 @@ def main():
         print(f" {name:<18s} {final_scores[name].mean():.3f} ± {final_scores[name].std(ddof=1):.3f}")
 
     report += "\n\n" + oof_classification_report(y_dev, oof_proba)
-    report += "\n" + fairness_report(y_dev, oof_proba, extras_dev, sensitive_attr=config["data"]["sensitive_attr"])
-
+    report += "\n" + fairness_report(y_dev, oof_proba, extras_dev, sensitive_attr=config["data"]["sensitive_attr"],
+        reference_score=config["data"].get("reference_score"))
     pipeline.fit(X_dev, y_dev)
     refit = f"Final model: {model_type} refit on all {len(X_dev)} development rows."
     report += "\n" + refit + "\n"
@@ -157,8 +160,12 @@ def main():
     print(f"\n{refit}\nFull report (per-fold tables, tuning, confusion matrix, fairness): {path}")
     print(features_line)
 
+    if config.get("predict"):
+        predictions_path = predict_new_data(pipeline, config)
+        print(f"Predictions for {config['predict']['input']} saved to {predictions_path}")
+
     shutil.rmtree(cache_dir, ignore_errors=True) # Week 8: delete this run's cache folder
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "config.yaml")

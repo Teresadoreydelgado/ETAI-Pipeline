@@ -1,0 +1,105 @@
+Run: 20261113_110045
+Model: xgboost params={'random_state': 42, 'n_jobs': -1}
+Preprocessing: encoder=target scaler=robust
+CV: 5 stratified folds shuffle=True random_state=42
+Metrics: accuracy, balanced_accuracy, precision, recall, f1, fbeta_2, roc_auc, average_precision
+Selection metric: roc_auc
+Feature selection: off
+Tuning: Optuna, 30 trials x 5 folds, nested CV random_state=42
+Locked test set: size=0.2 random_state=42 (not evaluated)
+============================================================
+
+Hyperparameters from config.yaml: {'random_state': 42, 'n_jobs': -1}
+
+Cross-validation (5 stratified folds, selection metric: roc_auc)
+
+ fold  train  validation   gap  accuracy  balanced_accuracy  precision  recall    f1  fbeta_2  roc_auc  average_precision
+    1  1.000       0.898 0.101     0.851              0.767      0.724   0.607 0.660    0.627    0.898              0.773
+    2  0.999       0.890 0.109     0.841              0.736      0.728   0.535 0.617    0.565    0.890              0.740
+    3  0.999       0.916 0.084     0.859              0.768      0.768   0.591 0.668    0.620    0.916              0.804
+    4  1.000       0.875 0.125     0.835              0.743      0.691   0.565 0.622    0.587    0.875              0.737
+    5  1.000       0.895 0.105     0.849              0.765      0.720   0.604 0.657    0.624    0.895              0.770
+
+                   mean   std
+accuracy          0.847 0.009
+balanced_accuracy 0.756 0.015
+precision         0.726 0.028
+recall            0.581 0.030
+f1                0.645 0.024
+fbeta_2           0.605 0.028
+roc_auc           0.895 0.015
+average_precision 0.765 0.028
+
+roc_auc: train-validation gap mean = +0.105
+
+No-model floor (dummy, same folds): roc_auc = 0.500
+
+Nested cross-validation (the tuning procedure, estimated honestly) (5 stratified folds, selection metric: roc_auc)
+
+ fold  train  validation    gap  accuracy  balanced_accuracy  precision  recall    f1  fbeta_2  roc_auc  average_precision  inner_best  model__n_estimators  model__learning_rate  model__max_depth  model__min_child_weight  model__subsample  model__colsample_bytree  model__reg_lambda  model__reg_alpha  model__gamma
+    1  0.931       0.910  0.021     0.864              0.774      0.775   0.603 0.678    0.631    0.910              0.799       0.904                  291                 0.022                 3                    1.238             0.742                    0.808              0.184             0.897         0.834
+    2  0.929       0.908  0.021     0.846              0.732      0.766   0.513 0.615    0.549    0.908              0.769       0.909                  213                 0.054                 2                    2.237             0.739                    0.663              0.119             0.056         0.050
+    3  0.922       0.928 -0.006     0.875              0.787      0.816   0.617 0.703    0.649    0.928              0.827       0.898                  192                 0.029                 3                    1.596             0.818                    0.693              0.099             1.457         0.349
+    4  0.949       0.883  0.066     0.848              0.754      0.733   0.574 0.644    0.600    0.883              0.756       0.913                  134                 0.086                 3                    1.069             0.653                    0.582              0.225             0.009         1.983
+    5  0.921       0.905  0.016     0.857              0.771      0.751   0.604 0.670    0.629    0.905              0.789       0.906                  113                 0.068                 2                    2.009             0.782                    0.759              0.025             0.034         1.095
+
+                   mean   std
+accuracy          0.858 0.012
+balanced_accuracy 0.763 0.021
+precision         0.768 0.031
+recall            0.582 0.042
+f1                0.662 0.034
+fbeta_2           0.612 0.039
+roc_auc           0.907 0.016
+average_precision 0.788 0.028
+
+roc_auc: train-validation gap mean = +0.023
+
+Tuning on the whole development set (30 Optuna trials, metric: roc_auc)
+Best hyperparameters: {'model__n_estimators': 180, 'model__learning_rate': 0.03259793558345765, 'model__max_depth': 4, 'model__min_child_weight': 1.3375098538261674, 'model__subsample': 0.8134827084485005, 'model__colsample_bytree': 0.7461445712611754, 'model__reg_lambda': 0.040328309148240725, 'model__reg_alpha': 0.43215493313601133, 'model__gamma': 0.9291456723878342}
+Best mean CV score:   0.907 (the maximum over all trials -- optimistic)
+
+Top 5 trials:
+ trial  mean roc_auc  model__colsample_bytree  model__gamma  model__learning_rate  model__max_depth  model__min_child_weight  model__n_estimators  model__reg_alpha  model__reg_lambda  model__subsample   std
+    29         0.907                    0.746         0.929                 0.033                 4                    1.338                  180             0.432              0.040             0.813 0.016
+    27         0.907                    0.726         1.440                 0.019                 4                    2.035                  201             0.693              0.032             0.803 0.015
+    18         0.907                    0.768         1.157                 0.019                 4                    1.173                  295             1.474              0.249             0.771 0.015
+    28         0.907                    0.693         0.349                 0.029                 3                    1.596                  192             1.457              0.099             0.811 0.016
+    17         0.907                    0.764         1.196                 0.025                 5                    1.376                  137             0.513              0.174             0.736 0.016
+
+Optimism check (nested CV):
+ tuning score inside the outer folds (inner_best) mean = 0.906
+ honest score on the outer folds (validation)      mean = 0.907
+ optimism = -0.001    -> report the honest one
+
+Out-of-fold predictions, development set (threshold 0.5):
+
+        predicted 0  predicted 1
+true 0         3449          202
+true 1          480          669
+
+              precision    recall  f1-score   support
+
+           0       0.88      0.94      0.91      3651
+           1       0.77      0.58      0.66      1149
+
+    accuracy                           0.86      4800
+   macro avg       0.82      0.76      0.79      4800
+weighted avg       0.85      0.86      0.85      4800
+
+
+False positive rate by sex (development set, out-of-fold)
+(share of people in the negative class (0) who were predicted as positive (1))
+ Our model:
+ Female               FPR = 0.01 (n=1390)
+ Male                 FPR = 0.08 (n=2261)
+
+Final model: xgboost refit on all 4800 development rows.
+Features kept (36 of 36): numeric__age, numeric__education_num, numeric__capital_gain, numeric__capital_loss, numeric__hours_per_week, numeric__v01, numeric__v02, numeric__v03, numeric__v04, numeric__v05, numeric__v06, numeric__v07, numeric__v08, numeric__v09, numeric__v10, numeric__v11, numeric__v12, numeric__v13, numeric__v14, numeric__v15, numeric__v16, numeric__v17, numeric__v18, categorical__workclass, categorical__marital_status, categorical__occupation, categorical__relationship, categorical__native_country, categorical__v19, categorical__v20, categorical__v21, categorical__v22, categorical__v23, categorical__v24, categorical__v25, indicators__workclass_was_missing
+
+Scoreboard:
+            run         model  tuned feature_selection encoder scaler  roc_auc   std  untuned  floor
+20261113_110045       xgboost   True               off  target robust    0.907 0.016    0.895  0.500
+20261113_105918       xgboost  False               off  target robust    0.895 0.015    0.895  0.500
+20261113_105731 decision_tree  False               off  target robust    0.724 0.012    0.724  0.500
+20261113_105518         dummy  False               off  target robust    0.500 0.000    0.500  0.500

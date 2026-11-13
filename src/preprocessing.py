@@ -94,7 +94,8 @@ def clean_dataset(df: pd.DataFrame, diagnostics_config: dict) -> pd.DataFrame:
     """
     Applies the week 3 diagnosis: category cleanup, domain-rule/placeholder -> NaN
     conversion, and redundant-column removal. Target-agnostic -- safe to call on
-    label-free inference data, since none of this depends on a target column. +  Row-preserving 
+    label-free inference data, since none of this depends on a target column.
+    Preserves all rows, including when processing new data for predictions.
     """
     out = df.copy()
     placeholder_tokens = set(diagnostics_config.get("placeholder_tokens", []))
@@ -107,6 +108,10 @@ def clean_dataset(df: pd.DataFrame, diagnostics_config: dict) -> pd.DataFrame:
     flag_invalid_values(out, diagnostics_config.get("validity_rules", {}))
 
     out = _canonicalize_categories(out, diagnostics_config.get("canonical_categories", {}), placeholder_tokens)
+
+    for col in out.select_dtypes(include=["object", "string"]).columns:
+        is_placeholder = out[col].notna() & out[col].astype(str).str.strip().isin(placeholder_tokens)
+        out.loc[is_placeholder, col] = np.nan
 
     columns_to_drop = [c for c in diagnostics_config.get("redundant_columns", []) if c in out.columns]
     out = out.drop(columns=columns_to_drop)
@@ -150,7 +155,8 @@ def split_features_target(df: pd.DataFrame, data_config: dict, mnar_indicator_so
     df = add_missingness_indicators(df, mnar_indicator_sources)
     y = df[target] if target in df.columns else None
 
-    extras_cols = [c for c in [sensitive_attr, "score_text"] if c in df.columns]
+    reference_column = (data_config.get("reference_score") or {}).get("column")
+    extras_cols = [c for c in [sensitive_attr, reference_column] if c and c in df.columns]
     extras = df[extras_cols].copy() if extras_cols else None
 
     always_drop = set(drop_columns) | {target, sensitive_attr}

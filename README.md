@@ -14,9 +14,11 @@ go on.
 
 ```
 .
-├── main.py                # entry point: run the whole pipeline
-├── config.yaml            # all tunable settings live here
-├── compare_runs.py        # corrected paired t-test between two runs of the scoreboard
+├── main.py                # entry point: run the whole pipeline (optional argument: the config file)
+├── config.yaml            # COMPAS settings (default config)
+├── config_adult.yaml      # Adult income settings (week 9)
+├── compare_runs.py        # corrected paired t-test between two runs of a scoreboard
+├── check_cleaning.py      # missing values and leftover placeholders after cleaning, for any config
 ├── requirements.txt
 ├── src/
 │   ├── data.py            # loading
@@ -24,11 +26,17 @@ go on.
 │   ├── model.py           # models, feature selection (VoteSelector) and build_pipeline()
 │   ├── tuning.py          # Optuna tuning + nested cross-validation
 │   ├── evaluate.py        # metrics, cross-validation, fairness check, corrected t-test
-│   └── results.py         # saves each run's report and the scoreboard (runs.csv)
-├── results/               # created automatically -- one report per run + runs.csv
+│   ├── results.py         # saves each run's report and the scoreboard (runs.csv)
+│   └── predict.py         # predictions for new, label-free data with the final model
+├── results/               # created automatically -- COMPAS: one report per run + runs.csv
+├── results_adult/         # created automatically -- Adult: one report per run + runs.csv
+├── predictions/           # adult_new_predictions.csv (id, probability, 0/1 prediction)
 └── data/
     ├── compas_two_year_recidivism.csv
-    └── README.md          # problem description + full data dictionary
+    ├── adult_train.csv
+    ├── adult_new.csv      # 2,000 new people without a label, to predict
+    ├── ADULT_README.md    # Adult data dictionary
+    └── README.md          # problem description + full data dictionary + weekly progress
 ```
 
 ## Pipeline progress
@@ -44,6 +52,7 @@ This table is updated after each practical class, so you can always see what cha
 | 6 | Ensembles | Oblique random forest and AdaBoost added to `src/model.py`; random forest fixed at 200 trees; search spaces for the three ensembles in `config.yaml` |
 | 7 | Boosting & evaluation metrics | Gradient boosting, HistGradientBoosting and naive Bayes added; 8 evaluation metrics computed from out-of-fold probabilities, with ROC-AUC as the selection metric; persistent scoreboard of all runs (`results/runs.csv`); corrected paired t-test (`corrected_paired_test()` in `src/evaluate.py`) |
 | 8 | XGBoost & feature selection | XGBoost added to `src/model.py`; feature selection (`VoteSelector`) as a learned step inside the pipeline, between preprocessing and the model, with `min_votes` tuned together with the model; cache folder (`memory=`) so tuning doesn't refit preprocessing and selection in every trial; `compare_runs.py` compares two runs with the corrected t-test |
+| 9 | Beyond COMPAS (option A: Adult) | The pipeline runs on a second dataset with its own config (`python main.py config_adult.yaml`; `config.yaml` stays the default); fairness report made general (COMPAS's reference score moved to the config); placeholder tokens cleaned in every text column; `src/predict.py` predicts new, label-free data (`predictions/adult_new_predictions.csv`); `compare_runs.py` takes the scoreboard path as an argument; `check_cleaning.py` checks missing values after cleaning |
 
 ## Environment setup
 
@@ -97,10 +106,9 @@ That's it -- activate, then run. If you don't see `(venv)` at the start of your 
 
 ## Running the pipeline
 
-With the environment active (see above), from the project's root
-folder, on any OS:
+To run another dataset, pass its config file as an argument (without it, `config.yaml` is used):
 ```bash
-python main.py
+python main.py config_adult.yaml
 ```
 
 This loads `config.yaml`, loads and cleans the data, locks the test set, and evaluates the pipeline (preprocessing, optional feature selection and model) with stratified 5-fold cross-validation on the development set. It prints:
