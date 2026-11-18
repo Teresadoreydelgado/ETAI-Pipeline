@@ -12,9 +12,11 @@ This orchestrates the full pipeline:
 
 from datetime import datetime
 
+import joblib
 import optuna
 import yaml
 from sklearn.model_selection import StratifiedKFold
+import os
 import shutil
 import sys
 import tempfile
@@ -63,8 +65,9 @@ def main(config_path: str = "config.yaml"):
     n_jobs = cv_config.get("n_jobs", 1)
 
     print(f"Config: {config_path}")
+    imputer = config["preprocessing"].get("imputation", {}).get("numeric_strategy", "median")
     print(f"Model: {model_type}   |   selection metric: {selection_metric}   |   "
-        f"{cv_config['n_splits']}-fold CV")
+        f"{cv_config['n_splits']}-fold CV   |   numeric imputer: {imputer}")
     print(f"Data: {len(X_dev)} development rows    |   {len(X_test)} test rows locked away (not used)")
 
     selection_config = config.get("feature_selection") or {}
@@ -130,6 +133,13 @@ def main(config_path: str = "config.yaml"):
     pipeline.fit(X_dev, y_dev)
     refit = f"Final model: {model_type} refit on all {len(X_dev)} development rows."
     report += "\n" + refit + "\n"
+
+    # Week 10: save the trained pipeline so it can be reused without fitting again.
+    model_path = config.get("output", {}).get("model_path", "models/model.joblib")
+    os.makedirs(os.path.dirname(model_path) or ".", exist_ok=True)
+    pipeline.set_params(memory=None)
+    joblib.dump(pipeline, model_path)
+
     feature_names = pipeline.named_steps["prep"].get_feature_names_out()
     if selection_enabled:
         kept = feature_names[pipeline.named_steps["select"].get_support()]
@@ -141,7 +151,7 @@ def main(config_path: str = "config.yaml"):
     report += features_line + "\n"
 
     row = {"run": run, "data": config["data"]["path"], "model": model_type, "tuned": tuning_enabled,
-        "feature_selection": selection_label,
+        "feature_selection": selection_label, "imputer": imputer,
         "encoder": config["preprocessing"]["encoder"], "scaler": config["preprocessing"]["scaler"],
         "params": str(config["model"].get("params")), "tuned_params": str(study.best_params) if tuning_enabled else "",
         "metric": selection_metric, "mean": final_scores["validation"].mean(),
@@ -150,8 +160,8 @@ def main(config_path: str = "config.yaml"):
     runs = save_scores(config.get("output", {}).get("scoreboard", "results/runs.csv"), row)
     same = runs[(runs["data"] == row["data"]) & (runs["metric"] == selection_metric)]
     board = (same.sort_values("mean", ascending=False)
-            [["run", "model", "tuned", "feature_selection", "encoder", "scaler", "mean", "std", "untuned", "floor"]]
-            .rename(columns={"mean": selection_metric})
+        [["run", "model", "tuned", "feature_selection", "imputer", "encoder", "scaler", "mean", "std", "untuned", "floor"]]
+        .rename(columns={"mean": selection_metric})
             .to_string(index=False, float_format=lambda v: f"{v:.3f}"))
     print(f"\nScoreboard (runs on the same data and metric; best first)\n{board}")
     report += f"\nScoreboard:\n{board}\n"

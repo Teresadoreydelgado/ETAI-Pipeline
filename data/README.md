@@ -1,5 +1,51 @@
 20260670 Teresa Maria d'Orey Delgado
 
+# WEEK 10 PROGRESS
+
+## Missing values and deployment
+
+This week had two parts. First, the numeric imputer became a choice in `config.yaml` (`numeric_strategy`): median, mean, KNN, MICE (`IterativeImputer`) or missForest (`IterativeImputer` with a random forest). They all learn only from the features, never from the label, so they also work on new people. Numeric columns are now scaled before imputing, because KNN measures distances. Second, `main.py` now saves the final fitted pipeline to `models/model.joblib`, and a new `predict.py` loads it to predict new people without retraining. The test set remains locked.
+
+### Pipeline progress
+
+| Week | Pipeline improvements |
+|---|---|
+| W9 | Pipeline runs on a second dataset (Adult) with its own config: config file as an argument of `main.py`; general fairness report (reference score in the config); placeholders cleaned in every text column; predictions for new, label-free data (`src/predict.py`); `compare_runs.py` reads any scoreboard |
+| W10 | Numeric imputer as a config option (median, mean, knn, iterative, random_forest), scaled before imputing; imputer shown in the terminal, the scoreboard and the report header; `main.py` saves the final pipeline (`models/model.joblib`); `predict.py` predicts a new CSV without retraining |
+
+### Missing values
+
+XGBoost untuned, feature selection on (`min_votes=2`), 5-fold CV on the development set. Only `numeric_strategy` changes between runs. Each imputer was compared with the median using the corrected paired t-test (`compare_runs.py`).
+
+| Numeric imputer | ROC-AUC (mean ± std) | Train-validation gap | vs median (corrected t-test) |
+|---|---|---|---|
+| **median** | 0.706 ± 0.015 | +0.062 | - |
+| knn | 0.707 ± 0.017 | +0.068 | +0.0006, wins 3/5, p = 0.80 |
+| iterative (MICE) | 0.706 ± 0.016 | +0.070 | +0.0002, wins 2/5, p = 0.94 |
+| random_forest (missForest) | 0.707 ± 0.014 | +0.070 | +0.0004, wins 3/5, p = 0.80 |
+
+With the median, the result is exactly the same as in Week 9 (0.706 ± 0.015), so scaling before imputing changed nothing.
+
+I keep the **median**. No imputer is really better (all differences below 0.001, all p ≥ 0.80), because the numeric imputer only sees the five numeric columns, which say little about each other, and the model only uses age and priors_count. Since the result is the same, the median is the better choice: it is the simplest and fastest, and it has the smallest train-validation gap.
+
+### Predicting new data
+
+```bash
+python main.py                                                 # train, evaluate and save models/model.joblib
+python predict.py data/compas_new_people.csv predictions.csv   # predict new people, no retraining
+```
+
+`predict.py` loads the saved pipeline (the last run, with the median), cleans the new data with the same rules as training (without dropping duplicates, since every row needs an answer) and writes `predictions.csv`. It has one row per input row (20 in, 20 out), with three columns: `id`, `probability` (of reoffending) and `prediction` (1 if the probability is ≥ 0.5). The messy rows also get a prediction: a `?` in `priors_count` becomes missing and is imputed, an unseen charge degree (`X`) is accepted by the encoder, and the same person appearing twice gets the same prediction in both rows.
+
+### Conclusions
+
+- **Deleting rows is not an option in production:** a new person with an empty field still needs a prediction, so missing values have to be imputed.
+- **A more complex imputer is not always better:** KNN, MICE and missForest did not beat the median, because an imputer is only as good as the columns it can see.
+- **Predicting never retrains:** the saved pipeline carries everything learned in training (medians, encoder, selected features, model), so new data is only transformed and predicted.
+- **Fairness did not change:** with every imputer, the false positive rate is still about 0.29 for African-American vs 0.18–0.19 for Caucasian defendants.
+
+**Final reported result:** XGBoost (untuned) with feature selection and median imputation reached a ROC-AUC of 0.706 ± 0.015 using 2 features (age, priors_count). KNN, MICE and missForest gave the same result within noise (p ≥ 0.80).
+
 # WEEK 9 PROGRESS
 
 ## Beyond COMPAS (option A: Adult income)

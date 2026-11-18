@@ -22,6 +22,7 @@ cv:
 output:
   results_dir: "results_adult"   # each run's full report is saved here; separate from COMPAS results
   scoreboard: "results_adult/runs.csv" # one row per run: the Adult scoreboard
+  model_path: "models/adult_model.joblib" # stores the Adult model separately from COMPAS
 
 # Week 9: data quality checks adapted to the Adult dataset
 diagnostics:
@@ -51,7 +52,10 @@ preprocessing:
   random_state: 42
   imputation:
     numeric_strategy: "median"        
-    categorical_strategy: "most_frequent"   
+    categorical_strategy: "most_frequent"
+    n_neighbors: 5                     # for KNN imputer, if used
+    max_iter: 10                        # for iterative imputer, if used
+    n_estimators: 50                     # for iterative imputer with random forest, if used   
 
 # Week 8: learned step between preprocessing and the model: keeps the features that at least
 # min_votes of three models (random forest, gradient boosting, L1 logistic regression) choose.
